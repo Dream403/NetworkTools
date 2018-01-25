@@ -7,7 +7,7 @@
 //
 
 #import "ViewController.h"
-
+#import "ZL_NetworkHelper.h"
 @interface ViewController ()
 
 @end
@@ -17,6 +17,13 @@
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
+    
+    [ZL_NetworkHelper checkNetworkStatusWithBlock:^(ZL_NetworkStatus status) {
+       
+        NSLog(@"%ld",status);
+       
+    }];
+    
 }
 
 

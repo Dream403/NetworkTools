@@ -17,6 +17,10 @@
 #import <AVFoundation/AVMediaFormat.h>
 #import "ZL_SessionManger.h"
 #define CP_ERROR [NSError errorWithDomain:@"com.Networking.ErrorDomain" code:-999 userInfo:@{ NSLocalizedDescriptionKey:@"网络出现错误，请检查网络连接"}]
+
+
+#define  _iPhoneX ([[UIScreen mainScreen] bounds].size.width == 375.f && [[UIScreen mainScreen] bounds].size.height == 812.f ? YES : NO)
+
 static NetworkReachabilityStatus _status;
 
 static BOOL _isNetwork;
@@ -1075,42 +1079,84 @@ typedef NS_ENUM(NSUInteger,HTTPMethodType ) {
 {
     UIApplication *application = [UIApplication sharedApplication];
 
-    NSArray *chlidrenArray = [[[application valueForKeyPath:@"statusBar"] valueForKeyPath:@"foregroundView"] subviews];
-
-    NSUInteger state = 0;
-
-    NSInteger netType =0;
-
-    for (id  child in chlidrenArray) {
-
-        if ([child isKindOfClass:NSClassFromString(@"UIStatusBarDataNetworkItemView")]) {
-
-            netType = [[child valueForKeyPath:@"dataNetworkType"] integerValue];
-
-            switch (netType) {
-                case 0:
-                    state = ZL_NetworkStatusNotReachable;
-                    break;
-                case 1:
-                    state = ZL_NetworkStatusReachableVia2G;
-                    break;
-                case 2:
-                    state = ZL_NetworkStatusReachableVia3G;
-                    break;
-                case 3:
-                    state = ZL_NetworkStatusReachableVia4G;
-                    break;
-                case 5:
-                    state = ZL_NetworkStatusReachableViaWiFi;
-                    break;
-                default:
-                    break;
-
-            }
-        }
+     NSMutableArray *chlidrenArray = [NSMutableArray arrayWithCapacity:0];
+    
+    if ([[application valueForKeyPath:@"_statusBar"] isKindOfClass:NSClassFromString(@"UIStatusBar_Modern")]) {
+        chlidrenArray = [[[[application valueForKeyPath:@"_statusBar"] valueForKeyPath:@"_statusBar"] valueForKeyPath:@"foregroundView"] subviews].mutableCopy;
+        
+    } else {
+        chlidrenArray =  [[[application valueForKeyPath:@"statusBar"] valueForKeyPath:@"foregroundView"] subviews].mutableCopy;
         
     }
+   __block NSUInteger state = 0;
+    __weak __typeof(&*self)weakSelf = self;
+    [chlidrenArray enumerateObjectsUsingBlock:^(id  _Nonnull obj, NSUInteger idx, BOOL * _Nonnull stop) {
+        {
+            if (_iPhoneX) {
+                if (idx ==2) {
+                         __strong typeof(weakSelf) strongSelf = weakSelf;
+                    UIView *tempObj =(UIView *) obj;
+                    [tempObj.subviews enumerateObjectsUsingBlock:^(__kindof UIView * _Nonnull obj2, NSUInteger idx, BOOL * _Nonnull stop2) {
+                        if ([obj2 isKindOfClass:NSClassFromString(@"_UIStatusBarWifiSignalView")]) {
+                            state = ZL_NetworkStatusReachableViaWiFi;
+                            *stop2  =YES;
+                        }else if ([obj2 isKindOfClass:NSClassFromString(@"_UIStatusBarStringView")]) {
+                            state =  [strongSelf WorkStatusWithString:[obj2 valueForKeyPath:@"originalText"]] ;
+                            *stop2  =YES;
+                        }
+                    }];
+                    *stop  =YES;
+                }
+            }else{
+                if ([obj isKindOfClass:NSClassFromString(@"UIStatusBarDataNetworkItemView")]) {
+                    switch ([[obj valueForKeyPath:@"dataNetworkType"] integerValue]) {
+                        case 0:
+                            state =ZL_NetworkStatusNotReachable;
+                            break;
+                        case 1:
+                            state = ZL_NetworkStatusReachableVia2G;
+                            break;
+                        case 2:
+                            state =ZL_NetworkStatusReachableVia3G;
+                            break;
+                        case 3:
+                            state = ZL_NetworkStatusReachableVia4G;
+                            break;
+                        case 5:
+                            state = ZL_NetworkStatusReachableViaWiFi;
+                            break;
+                        default:
+                            state = ZL_NetworkStatusNotReachable;
+                            break;
+                    }
+                    *stop  = YES;
+                }
+                
+            }
+            
+            
+        }
+        
+    }];
     return state;
+}
+
++(ZL_NetworkStatus)WorkStatusWithString:(NSString *)string{
+  
+    if ([string isEqualToString:@"2G"]) {
+        
+        return ZL_NetworkStatusReachableVia2G;
+    }else if ([string isEqualToString:@"3G"]){
+        
+        return ZL_NetworkStatusReachableVia3G;
+    }else if ([string isEqualToString:@"4G"]){
+        
+        return ZL_NetworkStatusReachableVia4G;
+    }else{
+        
+         return ZL_NetworkStatusNotReachable;
+    }
+
 }
 
 @end
